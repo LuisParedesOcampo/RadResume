@@ -43,19 +43,19 @@ with st.sidebar:
         "Oesophagus (SCC / Fast Adeno)": {
             "cat": 1, "ab": 10.0, "k": 0.9, "tdelay": 28
         },
-        "Gastrointestinal (Stomach, Colon, Pancreas)": {
+        "Gastrointestinal (Stomach, Colon, Pancreas)*": {
             "cat": 2, "ab": 10.0, "k": 0.4, "tdelay": 21
         },
-        "Liver (HCC - Standard Fractionation)": {
+        "Liver (HCC - Standard Fractionation)*": {
             "cat": 2, "ab": 10.0, "k": 0.4, "tdelay": 21
         },
         "Breast / Bladder (Standard)": {
             "cat": 2, "ab": 4.0, "k": 0.5, "tdelay": 21
         },
-        "Kidney (RCC)": {
+        "Kidney (RCC)*": {
             "cat": 2, "ab": 3.0, "k": 0.2, "tdelay": 0
         },
-        "Prostate (Slow / Hypofractionated)": {
+        "Prostate (Slow / Hypofractionated)*": {
             "cat": 2, "ab": 3.0, "k": 0.2, "tdelay": 0
         },
         "Palliative Intent (Category 3)": {
@@ -72,14 +72,15 @@ with st.sidebar:
         list(protocol_presets.keys()),
         help="Automatically loads RCR parameters. These can be overridden in the Advanced menu."
     )
+    st.caption("* Note: K estimated by extrapolation for these sites — limited direct RCR evidence.")
 
     # Cargar los datos del preset seleccionado
     preset = protocol_presets[selected_protocol]
     cat_labels = {1: "Category 1 (Fast)", 2: "Category 2 (Standard)", 3: "Category 3 (Palliative)"}
-
+    rcr_category_num = preset['cat']
 
     # 3. DIVULGACIÓN PROGRESIVA: Ocultar los parámetros complejos editables
-    with st.expander("⚙️ Modify selected Radiobiology Parameters"):
+    with st.expander("⚙️ Modify Radiobiology Parameters"):
         st.caption("Override default RCR values if clinically justified.")
 
         rcr_category_num = st.number_input("RCR Category", min_value=1, max_value=3, value=preset['cat'])
@@ -89,7 +90,6 @@ with st.sidebar:
 
         st.divider()
         st.caption("Normal Tissue (OARs)")
-        # Asegúrate de que el código principal usa esta variable 'AB_NORMAL'
         AB_NORMAL = st.number_input("Normal Tissue α/β (Gy)", min_value=1.0, value=3.0, step=0.5)
 
     # 4. Transparencia Clínica: Mostrar los parámetros asumidos en un cuadro informativo
@@ -97,11 +97,12 @@ with st.sidebar:
         **{cat_labels[rcr_category_num]}**
         - **Tumour α/β:** {alfa_beta} Gy
         - **Loss (K):** {factor_k} Gy/day
-        - **T_delay:** {t_delay } days
+        - **T_delay:** {t_delay} days
+        - **Normal Tissue α/β:** {AB_NORMAL} Gy
         """)
-
     st.divider()
     st.caption("Global LQ Model Configuration.")
+
 # =============================================================
 # 3. MAIN WINDOW: CLINICAL DATA (Single Column)
 # =============================================================
@@ -213,30 +214,51 @@ with col_results:
 
         st.subheader("🎯 Compensation Options")
 
-        # --- CRITICAL 2: T_delay EXACT MATHEMATICAL LOGIC ---
+        # =========================================================
+        # --- CRITICAL 2: EXACT MATHEMATICAL LOGIC (REFACTORED) ---
+        # =========================================================
+
+        # ── Parámetros de tiempo ─────────────────────────────────
         T_original = (total_fracciones / 5.0) * 7.0
-        T_new = T_original + dias_retraso_biologico
-        bed_frac = dosis_por_fraccion * (1 + (dosis_por_fraccion / alfa_beta))
-
-        # Prescribed tumor BED (E)
-        E_prescrito = (total_fracciones * bed_frac) - factor_k * max(0, T_original - t_delay)
-        bed_entregado_fisico = fracciones_dadas * bed_frac
-
-        # Required physical BED to reach E
-        bed_faltante = E_prescrito + factor_k * max(0, T_new - t_delay) - bed_entregado_fisico
-        bed_faltante = max(0, bed_faltante)
-
-        n_restante_raw = bed_faltante / bed_frac if bed_frac > 0 else 0
-        n_restante_final = round(n_restante_raw)
+        T_pregap = (fracciones_dadas / 5.0) * 7.0
 
         frac_originales_que_faltaban = total_fracciones - fracciones_dadas
+        dias_para_completar = (frac_originales_que_faltaban / 5.0) * 7.0
+        T_new = T_pregap + dias_retraso_biologico + dias_para_completar
+
+
+        # ── BED tumoral — Ecuación B del Appendix B ──────────────
+        def bed_tumour(n_fx, d, ab, k, T, T_del):
+            physical = n_fx * d * (1 + d / ab)
+            repop = k * max(0.0, T - T_del)
+            return physical - repop
+
+
+        # BED10 del plan completo prescrito
+        BED10_prescrito = bed_tumour(total_fracciones, dosis_por_fraccion, alfa_beta, factor_k, T_original, t_delay)
+
+        # BED10 ya entregado antes del gap
+        BED10_pregap = bed_tumour(fracciones_dadas, dosis_por_fraccion, alfa_beta, factor_k, T_pregap, t_delay)
+
+        # Despejando BED físico post-gap necesario
+        repop_total = factor_k * max(0.0, T_new - t_delay)
+        repop_pregap = factor_k * max(0.0, T_pregap - t_delay)
+        bed_fisico_postgap_needed = BED10_prescrito - (fracciones_dadas * dosis_por_fraccion * (
+                    1 + dosis_por_fraccion / alfa_beta)) + repop_total - repop_pregap
+        bed_fisico_postgap_needed = max(0.0, bed_fisico_postgap_needed)
+
+        # Fracciones necesarias manteniendo misma dosis por fracción
+        bed_frac = dosis_por_fraccion * (1 + dosis_por_fraccion / alfa_beta)
+        n_restante_raw = bed_fisico_postgap_needed / bed_frac if bed_frac > 0 else 0
+        n_restante_final = round(n_restante_raw)
         fracciones_extra = n_restante_final - frac_originales_que_faltaban
 
-        bed_final_recalculated = bed_entregado_fisico + (n_restante_final * bed_frac)
-        diff_bed = bed_final_recalculated - (E_prescrito + factor_k * max(0, T_new - t_delay))
+        # Diferencia de BED por redondeo
+        BED10_final = BED10_pregap + bed_tumour(n_restante_final, dosis_por_fraccion, alfa_beta, factor_k, T_new,
+                                                t_delay) + repop_pregap
+        diff_bed = BED10_final - BED10_prescrito
 
         # --- MAJOR 1: NORMAL TISSUE BED3 CALCULATION ---
-       # AB_NORMAL = 3.0
         bed3_frac = dosis_por_fraccion * (1 + dosis_por_fraccion / AB_NORMAL)
         bed3_prescribed = total_fracciones * bed3_frac
         bed3_delivered = fracciones_dadas * bed3_frac
@@ -253,7 +275,6 @@ with col_results:
             </div>
             """, unsafe_allow_html=True)
 
-            # MAJOR 3: Palliative 7-day threshold
             if dias_retraso_biologico > 7:
                 st.warning(
                     f"⚠️ **RCR Category 3:** Prolongation of {dias_retraso_biologico} days exceeds the 7-day threshold. Compensation may be required (RCR Section 3.3). Clinical judgement required — consider hypofractionation options.")
@@ -264,37 +285,34 @@ with col_results:
         else:
             # --- PREFERRED CLINICAL OPTION (PERMANENT BANNER) ---
             st.markdown(f"""
-                    <div style="background-color:#e8f5e9; padding:15px; border-radius:8px; border-left: 5px solid #2e7d32; margin-bottom: 20px;">
-                        <h4 style="margin:0; color:#2e7d32;">🥇 Primary RCR Recommendation: Linac Transfer</h4>
-                        <p style="margin:5px 0 0 0; font-size:0.95em; color:#333;">
-                            Transfer the patient to a matched machine on the same day or treat on a planned rest day (weekend). 
-                            <b>If executed, no biological extension (OTT) occurs</b> and the original prescription remains unchanged. 
-                            If this is not logistically possible, evaluate the calculated options below.
-                        </p>
-                    </div>
-                    """, unsafe_allow_html=True)
+            <div style="background-color:#e8f5e9; padding:15px; border-radius:8px; border-left: 5px solid #2e7d32; margin-bottom: 20px;">
+                <h4 style="margin:0; color:#2e7d32;">🥇 Primary RCR Recommendation: Linac Transfer</h4>
+                <p style="margin:5px 0 0 0; font-size:0.95em; color:#333;">
+                    Transfer the patient to a matched machine on the same day or treat on a planned rest day (weekend). 
+                    <b>If executed, no biological extension (OTT) occurs</b> and the original prescription remains unchanged. 
+                    If this is not logistically possible, evaluate the calculated options below.
+                </p>
+            </div>
+            """, unsafe_allow_html=True)
 
             # --- CALCULATED OPTIONS (3 TABS) ---
             tab1, tab2, tab3 = st.tabs(["1️⃣ BID Scheduling", "2️⃣ Exact Dose Adjustment", "⚠️ 3️⃣ Add Fractions"])
 
-            # TAB 1: BID Scheduling
             with tab1:
-                # Minor 1: SABR Warning
                 if es_sabr:
                     st.error(
                         "🚫 **BID CONTRAINDICATED:** Accelerated scheduling is not appropriate for SABR. Treatment on non-consecutive days should resume after any delay (RCR Section 5.5).")
-                # Major 2: 2.2 Gy Limit
                 elif dosis_por_fraccion > 2.2:
                     st.error(
                         f"🚫 **BID NOT RECOMMENDED:** Current fraction size is {dosis_por_fraccion:.2f} Gy, exceeding the RCR limit of 2.2 Gy for twice-daily treatment (RCR 4th Ed., Section 5.2). Risk of incomplete repair.")
                 elif turnos_perdidos > 0:
                     if turnos_perdidos <= frac_originales_que_faltaban:
                         st.markdown(f"""
-                                <div style="background-color:#e1f5fe; padding:15px; border-radius:8px; border-left: 5px solid #01579b;">
-                                    <h4 style="margin:0; color:#01579b;">Acceleration Protocol: BID</h4>
-                                    <h3 style="margin:5px 0; color:#01579b;">Deliver: {turnos_perdidos} BID session(s)</h3>
-                                </div>
-                                """, unsafe_allow_html=True)
+                        <div style="background-color:#e1f5fe; padding:15px; border-radius:8px; border-left: 5px solid #01579b;">
+                            <h4 style="margin:0; color:#01579b;">Acceleration Protocol: BID</h4>
+                            <h3 style="margin:5px 0; color:#01579b;">Deliver: {turnos_perdidos} BID session(s)</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
                         st.info(
                             f"📅 **Action:** Deliver the remaining {frac_originales_que_faltaban} fractions without adding extra days. Schedule **{turnos_perdidos}** of these days as BID. Minimum 6-hour interval required (RCR Section 5.2).")
                     else:
@@ -303,31 +321,27 @@ with col_results:
                 else:
                     st.success("No physical turns were lost. BID scheduling is not required.")
 
-            # TAB 2: Exact Dose Adjustment
             with tab2:
                 if n_restante_final > 0:
                     a = n_restante_final / alfa_beta
                     b = n_restante_final
-                    c = -bed_faltante
+                    c = -bed_fisico_postgap_needed  # Corrected reference for exact physical BED needed
                     discriminant = (b ** 2) - (4 * a * c)
 
                     if discriminant >= 0:
                         exact_dose = (-b + math.sqrt(discriminant)) / (2 * a)
-                        dose_diff = exact_dose - dosis_por_fraccion
 
                         st.markdown(f"""
-                                <div style="background-color:#f3e5f5; padding:15px; border-radius:8px; border-left: 5px solid #6a1b9a;">
-                                    <h4 style="margin:0; color:#6a1b9a;">Precision Protocol: Adjust Dose</h4>
-                                    <h3 style="margin:5px 0; color:#6a1b9a;">Deliver: {n_restante_final} fx of {exact_dose:.2f} Gy</h3>
-                                </div>
-                                """, unsafe_allow_html=True)
+                        <div style="background-color:#f3e5f5; padding:15px; border-radius:8px; border-left: 5px solid #6a1b9a;">
+                            <h4 style="margin:0; color:#6a1b9a;">Precision Protocol: Adjust Dose</h4>
+                            <h3 style="margin:5px 0; color:#6a1b9a;">Deliver: {n_restante_final} fx of {exact_dose:.2f} Gy</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                        # Minor 5: > 2.5 Gy Warning
                         if exact_dose > 2.5:
                             st.warning(
                                 f"⚠️ **Caution:** Proposed fraction dose is {exact_dose:.2f} Gy. RCR Example 3 warns this may significantly increase late normal tissue effects.")
 
-                        # Major 1: Normal Tissue BED3 Check
                         bed3_proposed_tab2 = n_restante_final * exact_dose * (1 + exact_dose / AB_NORMAL)
                         excess_pct_tab2 = ((
                                                        bed3_proposed_tab2 - bed3_remaining) / bed3_remaining * 100) if bed3_remaining > 0 else 0
@@ -341,19 +355,18 @@ with col_results:
                 else:
                     st.error("No remaining fractions available to adjust.")
 
-            # TAB 3: Extension (Add Fractions) - Last Resort
             with tab3:
                 st.markdown(f"""
-                        <div style="background-color:#fff3e0; padding:15px; border-radius:8px; border-left: 5px solid #e65100;">
-                            <h4 style="margin:0; color:#e65100;">Standard Protocol: Add Fractions</h4>
-                            <p style="margin:5px 0 10px 0; font-size:0.9em; color:#333;">Extends the overall treatment time. Least preferred option.</p>
-                            <ul style="margin-bottom:10px; font-size:1.0em; color:#333;">
-                                <li>Original fractions pending: <b>{frac_originales_que_faltaban}</b></li>
-                                <li>Extra fractions to add: <b style="color:#d32f2f;">+{fracciones_extra}</b></li>
-                            </ul>
-                            <h3 style="margin:5px 0; color:#e65100;">Total remaining: {n_restante_final} fx of {dosis_por_fraccion:.2f} Gy</h3>
-                        </div>
-                        """, unsafe_allow_html=True)
+                <div style="background-color:#fff3e0; padding:15px; border-radius:8px; border-left: 5px solid #e65100;">
+                    <h4 style="margin:0; color:#e65100;">Standard Protocol: Add Fractions</h4>
+                    <p style="margin:5px 0 10px 0; font-size:0.9em; color:#333;">Extends the overall treatment time. Least preferred option.</p>
+                    <ul style="margin-bottom:10px; font-size:1.0em; color:#333;">
+                        <li>Original fractions pending: <b>{frac_originales_que_faltaban}</b></li>
+                        <li>Extra fractions to add: <b style="color:#d32f2f;">+{fracciones_extra}</b></li>
+                    </ul>
+                    <h3 style="margin:5px 0; color:#e65100;">Total remaining: {n_restante_final} fx of {dosis_por_fraccion:.2f} Gy</h3>
+                </div>
+                """, unsafe_allow_html=True)
 
                 if fracciones_extra > 0:
                     st.info(f"🔄 Integer rounding creates a tumor biological excess of **{diff_bed:+.2f} Gy BED**.")
@@ -361,7 +374,6 @@ with col_results:
                     st.success(
                         f"✅ Loss is too small to justify an extra fraction. Tumor deficit: **{diff_bed:.2f} Gy BED**.")
 
-                # Major 1: Normal Tissue BED3 Check for Extension
                 bed3_proposed_tab3 = n_restante_final * dosis_por_fraccion * (1 + dosis_por_fraccion / AB_NORMAL)
                 excess_pct_tab3 = (
                             (bed3_proposed_tab3 - bed3_remaining) / bed3_remaining * 100) if bed3_remaining > 0 else 0
@@ -372,36 +384,64 @@ with col_results:
                 elif excess_pct_tab3 > 0:
                     st.warning(f"⚠️ Normal tissue BED₃ slightly exceeded by **{excess_pct_tab3:.1f}%**.")
 
-        # --- MINOR 2: EXPORTABLE AUDIT REPORT ---
+        # =========================================================
+        # --- MINOR 2: EXPORTABLE AUDIT REPORT (UPDATED) ----------
+        # =========================================================
         st.divider()
-        report_text = f"""--- RadResume Audit Report ---
-Date: {date.today()}
-RCR Category: {rcr_category_num}
-Tumour Alpha/Beta: {alfa_beta}
-K Factor: {factor_k} Gy/day
-T_delay used: {t_delay} days
+        report_text = f"""RadResume — RCR Interruption Audit Record
+{'=' * 50}
+Date of calculation : {date.today()}
+Case reference      : [COMPLETE BEFORE FILING]
 
---- Original Plan ---
-Prescription: {dosis_total} Gy / {total_fracciones} fx
-Dose per Fraction: {dosis_por_fraccion:.2f} Gy
+TREATMENT PROTOCOL
+Protocol selected   : {selected_protocol}
+RCR Category        : {rcr_category_num} — {cat_labels[rcr_category_num]}
+Tumour α/β          : {alfa_beta} Gy
+K factor            : {factor_k} Gy/day
+T_delay             : {t_delay} days
+Normal tissue α/β   : {AB_NORMAL} Gy
 
---- Interruption Details ---
-Fractions Delivered: {fracciones_dadas}
-Physical Turns Lost: {turnos_perdidos}
-Biological Extension (OTT): {dias_retraso_biologico} days
+ORIGINAL PRESCRIPTION
+Total dose          : {dosis_total} Gy
+Total fractions     : {total_fracciones} fx
+Dose per fraction   : {dosis_por_fraccion:.2f} Gy
+Prescribed BED₁₀    : {BED10_prescrito:.2f} Gy₁₀
+Prescribed BED₃     : {bed3_prescribed:.2f} Gy₃
 
---- Clinical Governance Checklist ---
-[ ] Transfer to matched linac evaluated (First Option)
-[ ] Normal tissue tolerance (BED3) verified
-[ ] IR(ME)R 2017 compliance justified and documented
+INTERRUPTION DETAILS
+Last fraction date  : {f1}
+Planned restart     : {f2}
+Calendar gap        : {dias_naturales} days
+Fractions delivered : {fracciones_dadas} / {total_fracciones}
+Turns lost          : {turnos_perdidos}
+OTT extension       : {dias_retraso_biologico} days
+Pre-gap BED₁₀       : {BED10_pregap:.2f} Gy₁₀
+Pre-gap BED₃        : {bed3_delivered:.2f} Gy₃
+Remaining BED₃      : {bed3_remaining:.2f} Gy₃
 
-Physician Signature: _______________________
-Physicist Signature: _______________________
+COMPENSATION SELECTED (complete one)
+[ ] Linac transfer / weekend — no biological change required
+[ ] BID scheduling — {turnos_perdidos} BID sessions, ≥6 h interval
+[ ] Dose adjustment — {n_restante_final} fx of ______ Gy
+[ ] Add fractions   — {n_restante_final} fx of {dosis_por_fraccion:.2f} Gy
+
+CLINICAL GOVERNANCE CHECKLIST (RCR Section 7)
+[ ] Transfer to matched linac evaluated first (RCR §5.1)
+[ ] Normal tissue BED₃ verified within tolerance (RCR App. B)
+[ ] Patient informed and re-consent obtained if required (RCR §7.2)
+[ ] IR(ME)R 2017 compliance — change authorised by prescribing practitioner
+[ ] Entered in departmental interruption registry (RCR §6.5)
+
+Prescribing Oncologist : _______________________
+Medical Physicist      : _______________________
+Date authorised        : _______________________
+{'=' * 50}
+Generated by RadResume | For clinical use verify independently.
 """
         st.download_button(
-            label="📥 Download Audit Report",
+            label="📝 Download Audit Record (TXT)",
             data=report_text,
-            file_name="RadResume_Audit_Report.txt",
+            file_name="RadResume_Audit_Record.txt",
             mime="text/plain"
         )
 
