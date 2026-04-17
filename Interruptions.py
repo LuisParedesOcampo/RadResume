@@ -33,56 +33,75 @@ st.info("Biological compensation calculator based on RCR 4th Edition guidelines 
 st.sidebar.header("🧮 Radiobiological Settings")
 
 with st.sidebar:
-    # --- CRITICAL 3: RCR Category assigned by Tumour Type ---
-    st.subheader("Clinical Category")
-    tumour_categories = {
-        "Category 1 — SCC head & neck, cervix, lung (NSCLC/SCLC), anus, oesophagus, medulloblastoma/PNET": 1,
-        "Category 1 — Other fast-growing tumour": 1,
-        "Category 2 — Breast adenocarcinoma (post-op ≥5 weeks)": 2,
-        "Category 2 — Bladder (TCC) or prostate adenocarcinoma": 2,
-        "Category 3 — Palliative intent": 3,
-    }
-    selected_tumour = st.selectbox("Tumour type / RCR Category (Section 3)", list(tumour_categories.keys()))
-    rcr_category_num = tumour_categories[selected_tumour]
+    st.subheader("Clinical Protocol (Suggested Presets)")
 
-    # --- CRITICAL 1: Default K Factor Update ---
-    if rcr_category_num == 1:
-        rcr_category_str = "Category 1 (Fast)"
-        suggested_k = 0.9  # RCR Appendix B: Dale et al.
-    elif rcr_category_num == 2:
-        rcr_category_str = "Category 2 (Standard)"
-        suggested_k = 0.5
-    else:
-        rcr_category_str = "Category 3 (Palliative)"
-        suggested_k = 0.0
-
-    st.markdown(f"**Detected Category:** `{rcr_category_str}`")
-
-    factor_k = st.number_input("K Factor (BED Loss Gy/day)", value=suggested_k, step=0.1,
-                               help="Dale et al. suggest K=0.9 Gy/day for SCC H&N.")
-
-    t_delay = st.number_input("T_delay (Days before accelerated repopulation)", value=28, step=1,
-                              help="RCR Appendix B uses 28 days for H&N.")
-
-    st.divider()
-    st.subheader("Radiobiology (Tumour)")
-    ab_options = {
-        "Fast Growing Tumor (α/β = 10)": 10.0,
-        "Prostate / Hypofractionation (α/β = 3.0)": 3.0,
-        "Late Tissue / CNS (α/β = 2.0)": 2.0,
-        "Custom": 10.0
+    # 1. Base de datos ampliada de "Preajustes Inteligentes"
+    protocol_presets = {
+        "Head & Neck / Cervix / Lung (Fast SCC)": {
+            "cat": 1, "ab": 10.0, "k": 0.9, "tdelay": 28
+        },
+        "Oesophagus (SCC / Fast Adeno)": {
+            "cat": 1, "ab": 10.0, "k": 0.9, "tdelay": 28
+        },
+        "Gastrointestinal (Stomach, Colon, Pancreas)": {
+            "cat": 2, "ab": 10.0, "k": 0.4, "tdelay": 21
+        },
+        "Liver (HCC - Standard Fractionation)": {
+            "cat": 2, "ab": 10.0, "k": 0.4, "tdelay": 21
+        },
+        "Breast / Bladder (Standard)": {
+            "cat": 2, "ab": 4.0, "k": 0.5, "tdelay": 21
+        },
+        "Kidney (RCC)": {
+            "cat": 2, "ab": 3.0, "k": 0.2, "tdelay": 0
+        },
+        "Prostate (Slow / Hypofractionated)": {
+            "cat": 2, "ab": 3.0, "k": 0.2, "tdelay": 0
+        },
+        "Palliative Intent (Category 3)": {
+            "cat": 3, "ab": 10.0, "k": 0.0, "tdelay": 0
+        },
+        "Custom Configuration": {
+            "cat": 1, "ab": 10.0, "k": 0.6, "tdelay": 28
+        }
     }
 
-    selected_ab = st.selectbox("Select Tumour Tissue (α/β)", list(ab_options.keys()))
+    # 2. Selector clínico principal
+    selected_protocol = st.selectbox(
+        "Select Treatment Site / Intent",
+        list(protocol_presets.keys()),
+        help="Automatically loads RCR parameters. These can be overridden in the Advanced menu."
+    )
 
-    if selected_ab == "Custom":
-        alfa_beta = st.number_input("Custom α/β value", value=10.0, step=0.5)
-    else:
-        alfa_beta = ab_options[selected_ab]
+    # Cargar los datos del preset seleccionado
+    preset = protocol_presets[selected_protocol]
+    cat_labels = {1: "Category 1 (Fast)", 2: "Category 2 (Standard)", 3: "Category 3 (Palliative)"}
+
+
+    # 3. DIVULGACIÓN PROGRESIVA: Ocultar los parámetros complejos editables
+    with st.expander("⚙️ Modify selected Radiobiology Parameters"):
+        st.caption("Override default RCR values if clinically justified.")
+
+        rcr_category_num = st.number_input("RCR Category", min_value=1, max_value=3, value=preset['cat'])
+        alfa_beta = st.number_input("Tumour α/β (Gy)", min_value=1.0, value=preset['ab'], step=0.5)
+        factor_k = st.number_input("K Factor (Gy/day)", min_value=0.0, value=preset['k'], step=0.1)
+        t_delay = st.number_input("T_delay (Days)", min_value=0, value=preset['tdelay'], step=1)
+
+        st.divider()
+        st.caption("Normal Tissue (OARs)")
+        # Asegúrate de que el código principal usa esta variable 'AB_NORMAL'
+        AB_NORMAL = st.number_input("Normal Tissue α/β (Gy)", min_value=1.0, value=3.0, step=0.5)
+
+    # 4. Transparencia Clínica: Mostrar los parámetros asumidos en un cuadro informativo
+    st.info(f"""
+        **{cat_labels[rcr_category_num]}**
+        - **Tumour α/β:** {alfa_beta} Gy
+        - **Loss (K):** {factor_k} Gy/day
+        - **T_delay:** {t_delay } days
+        """)
 
     st.divider()
     st.caption("Global LQ Model Configuration.")
-
 # =============================================================
 # 3. MAIN WINDOW: CLINICAL DATA (Single Column)
 # =============================================================
@@ -217,7 +236,7 @@ with col_results:
         diff_bed = bed_final_recalculated - (E_prescrito + factor_k * max(0, T_new - t_delay))
 
         # --- MAJOR 1: NORMAL TISSUE BED3 CALCULATION ---
-        AB_NORMAL = 3.0
+       # AB_NORMAL = 3.0
         bed3_frac = dosis_por_fraccion * (1 + dosis_por_fraccion / AB_NORMAL)
         bed3_prescribed = total_fracciones * bed3_frac
         bed3_delivered = fracciones_dadas * bed3_frac
@@ -243,20 +262,20 @@ with col_results:
                     f"✅ **RCR Category 3:** Prolongation of {dias_retraso_biologico} days is within acceptable range. No extra compensation strictly required.")
 
         else:
-            # --- MAJOR 5: REORDERED TABS HIERARCHY ---
-            tab0, tab1, tab2, tab3 = st.tabs(
-                ["🥇 1. Transfer", "🥈 2. BID Scheduling", "🥉 3. Bio Adjustment", "⚠️ 4. Add Fractions"])
+            # --- PREFERRED CLINICAL OPTION (PERMANENT BANNER) ---
+            st.markdown(f"""
+                    <div style="background-color:#e8f5e9; padding:15px; border-radius:8px; border-left: 5px solid #2e7d32; margin-bottom: 20px;">
+                        <h4 style="margin:0; color:#2e7d32;">🥇 Primary RCR Recommendation: Linac Transfer</h4>
+                        <p style="margin:5px 0 0 0; font-size:0.95em; color:#333;">
+                            Transfer the patient to a matched machine on the same day or treat on a planned rest day (weekend). 
+                            <b>If executed, no biological extension (OTT) occurs</b> and the original prescription remains unchanged. 
+                            If this is not logistically possible, evaluate the calculated options below.
+                        </p>
+                    </div>
+                    """, unsafe_allow_html=True)
 
-            # TAB 0: Transfer (Minor 3)
-            with tab0:
-                st.markdown(f"""
-                <div style="background-color:#e8f5e9; padding:15px; border-radius:8px; border-left: 5px solid #2e7d32;">
-                    <h4 style="margin:0; color:#2e7d32;">Preferred Option: Linac Transfer</h4>
-                    <p style="margin:5px 0 10px 0; font-size:0.9em; color:#333;">The primary recommendation from RCR is to transfer the patient to a matched machine on the same day or treat on a planned rest day (weekend).</p>
-                </div>
-                """, unsafe_allow_html=True)
-                st.info(
-                    "If this option is executed, **no biological extension (OTT) occurs**, and the original prescription remains unchanged.")
+            # --- CALCULATED OPTIONS (3 TABS) ---
+            tab1, tab2, tab3 = st.tabs(["1️⃣ BID Scheduling", "2️⃣ Exact Dose Adjustment", "⚠️ 3️⃣ Add Fractions"])
 
             # TAB 1: BID Scheduling
             with tab1:
@@ -271,11 +290,11 @@ with col_results:
                 elif turnos_perdidos > 0:
                     if turnos_perdidos <= frac_originales_que_faltaban:
                         st.markdown(f"""
-                        <div style="background-color:#e1f5fe; padding:15px; border-radius:8px; border-left: 5px solid #01579b;">
-                            <h4 style="margin:0; color:#01579b;">Acceleration Protocol: BID</h4>
-                            <h3 style="margin:5px 0; color:#01579b;">Deliver: {turnos_perdidos} BID session(s)</h3>
-                        </div>
-                        """, unsafe_allow_html=True)
+                                <div style="background-color:#e1f5fe; padding:15px; border-radius:8px; border-left: 5px solid #01579b;">
+                                    <h4 style="margin:0; color:#01579b;">Acceleration Protocol: BID</h4>
+                                    <h3 style="margin:5px 0; color:#01579b;">Deliver: {turnos_perdidos} BID session(s)</h3>
+                                </div>
+                                """, unsafe_allow_html=True)
                         st.info(
                             f"📅 **Action:** Deliver the remaining {frac_originales_que_faltaban} fractions without adding extra days. Schedule **{turnos_perdidos}** of these days as BID. Minimum 6-hour interval required (RCR Section 5.2).")
                     else:
@@ -297,11 +316,11 @@ with col_results:
                         dose_diff = exact_dose - dosis_por_fraccion
 
                         st.markdown(f"""
-                        <div style="background-color:#f3e5f5; padding:15px; border-radius:8px; border-left: 5px solid #6a1b9a;">
-                            <h4 style="margin:0; color:#6a1b9a;">Precision Protocol: Adjust Dose</h4>
-                            <h3 style="margin:5px 0; color:#6a1b9a;">Deliver: {n_restante_final} fx of {exact_dose:.2f} Gy</h3>
-                        </div>
-                        """, unsafe_allow_html=True)
+                                <div style="background-color:#f3e5f5; padding:15px; border-radius:8px; border-left: 5px solid #6a1b9a;">
+                                    <h4 style="margin:0; color:#6a1b9a;">Precision Protocol: Adjust Dose</h4>
+                                    <h3 style="margin:5px 0; color:#6a1b9a;">Deliver: {n_restante_final} fx of {exact_dose:.2f} Gy</h3>
+                                </div>
+                                """, unsafe_allow_html=True)
 
                         # Minor 5: > 2.5 Gy Warning
                         if exact_dose > 2.5:
@@ -325,16 +344,16 @@ with col_results:
             # TAB 3: Extension (Add Fractions) - Last Resort
             with tab3:
                 st.markdown(f"""
-                <div style="background-color:#fff3e0; padding:15px; border-radius:8px; border-left: 5px solid #e65100;">
-                    <h4 style="margin:0; color:#e65100;">Standard Protocol: Add Fractions</h4>
-                    <p style="margin:5px 0 10px 0; font-size:0.9em; color:#333;">Extends the overall treatment time. Least preferred option.</p>
-                    <ul style="margin-bottom:10px; font-size:1.0em; color:#333;">
-                        <li>Original fractions pending: <b>{frac_originales_que_faltaban}</b></li>
-                        <li>Extra fractions to add: <b style="color:#d32f2f;">+{fracciones_extra}</b></li>
-                    </ul>
-                    <h3 style="margin:5px 0; color:#e65100;">Total remaining: {n_restante_final} fx of {dosis_por_fraccion:.2f} Gy</h3>
-                </div>
-                """, unsafe_allow_html=True)
+                        <div style="background-color:#fff3e0; padding:15px; border-radius:8px; border-left: 5px solid #e65100;">
+                            <h4 style="margin:0; color:#e65100;">Standard Protocol: Add Fractions</h4>
+                            <p style="margin:5px 0 10px 0; font-size:0.9em; color:#333;">Extends the overall treatment time. Least preferred option.</p>
+                            <ul style="margin-bottom:10px; font-size:1.0em; color:#333;">
+                                <li>Original fractions pending: <b>{frac_originales_que_faltaban}</b></li>
+                                <li>Extra fractions to add: <b style="color:#d32f2f;">+{fracciones_extra}</b></li>
+                            </ul>
+                            <h3 style="margin:5px 0; color:#e65100;">Total remaining: {n_restante_final} fx of {dosis_por_fraccion:.2f} Gy</h3>
+                        </div>
+                        """, unsafe_allow_html=True)
 
                 if fracciones_extra > 0:
                     st.info(f"🔄 Integer rounding creates a tumor biological excess of **{diff_bed:+.2f} Gy BED**.")
@@ -357,7 +376,7 @@ with col_results:
         st.divider()
         report_text = f"""--- RadResume Audit Report ---
 Date: {date.today()}
-RCR Category: {selected_tumour}
+RCR Category: {rcr_category_num}
 Tumour Alpha/Beta: {alfa_beta}
 K Factor: {factor_k} Gy/day
 T_delay used: {t_delay} days
@@ -413,6 +432,7 @@ st.markdown("""
     <ul style="color: #6c757d; font-size: 0.85em;">
         <li><strong>Responsibility:</strong> The user assumes all responsibility for the interpretation and clinical application of the results provided by this tool.</li>
         <li><strong>Verification:</strong> Calculations must be independently verified by a certified Medical Physicist or Radiation Oncologist before any clinical decision.</li>
+        <li><strong>Schedule:</strong> Any change to fractionation or dose schedule must be authorised and justified by the prescribing practitioner, in accordance with IR(ME)R 2017 (RCR Section 7.2). </li>
         <li><strong>Liability:</strong> The developers of RadComp shall not be held liable for any damages, clinical errors, or consequences arising from the use or misuse of this software.</li>
     </ul>
     <p style="color: #6c757d; font-size: 0.85em; font-style: italic;">
