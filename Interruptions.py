@@ -33,7 +33,7 @@ st.info("Biological compensation calculator based on RCR 4th Edition guidelines 
 st.sidebar.header("🧮 Radiobiological Settings")
 
 with st.sidebar:
-    st.subheader("Clinical Protocol (Suggested Presets)")
+    st.subheader("Clinical Protocol (Smart Presets)")
 
     # 1. Base de datos ampliada de "Preajustes Inteligentes"
     protocol_presets = {
@@ -79,8 +79,16 @@ with st.sidebar:
     cat_labels = {1: "Category 1 (Fast)", 2: "Category 2 (Standard)", 3: "Category 3 (Palliative)"}
     rcr_category_num = preset['cat']
 
-    # 3. DIVULGACIÓN PROGRESIVA: Ocultar los parámetros complejos editables
-    with st.expander("⚙️ Modify Radiobiology Parameters"):
+    # 3. Transparencia Clínica: Mostrar los parámetros asumidos en un cuadro informativo
+    st.info(f"""
+    **{cat_labels[preset['cat']]}**
+    - **Tumour α/β:** {preset['ab']} Gy
+    - **Loss (K):** {preset['k']} Gy/day
+    - **T_delay:** {preset['tdelay']} days
+    """)
+
+    # 4. DIVULGACIÓN PROGRESIVA: Ocultar los parámetros complejos editables
+    with st.expander("⚙️ Advanced Radiobiology Parameters"):
         st.caption("Override default RCR values if clinically justified.")
 
         rcr_category_num = st.number_input("RCR Category", min_value=1, max_value=3, value=preset['cat'])
@@ -92,14 +100,6 @@ with st.sidebar:
         st.caption("Normal Tissue (OARs)")
         AB_NORMAL = st.number_input("Normal Tissue α/β (Gy)", min_value=1.0, value=3.0, step=0.5)
 
-    # 4. Transparencia Clínica: Mostrar los parámetros asumidos en un cuadro informativo
-    st.info(f"""
-        **{cat_labels[rcr_category_num]}**
-        - **Tumour α/β:** {alfa_beta} Gy
-        - **Loss (K):** {factor_k} Gy/day
-        - **T_delay:** {t_delay} days
-        - **Normal Tissue α/β:** {AB_NORMAL} Gy
-        """)
     st.divider()
     st.caption("Global LQ Model Configuration.")
 
@@ -214,17 +214,25 @@ with col_results:
 
         st.subheader("🎯 Compensation Options")
 
+
         # =========================================================
-        # --- CRITICAL 2: EXACT MATHEMATICAL LOGIC (REFACTORED) ---
+        # --- CRITICAL 2: EXACT MATHEMATICAL LOGIC (FINAL FIX) ----
         # =========================================================
+
+        # ── Función de tiempo calendario correcta ─────────────────────────────
+        def T_calendario(n_fx):
+            """Días entre primera y última fracción en esquema L-V sin interrupciones"""
+            if n_fx <= 0:
+                return 0
+            semanas = (n_fx - 1) // 5
+            resto = (n_fx - 1) % 5
+            return semanas * 7 + resto
+
 
         # ── Parámetros de tiempo ─────────────────────────────────
-        T_original = (total_fracciones / 5.0) * 7.0
-        T_pregap = (fracciones_dadas / 5.0) * 7.0
-
+        T_original = T_calendario(total_fracciones)
+        T_total = T_original + dias_retraso_biologico
         frac_originales_que_faltaban = total_fracciones - fracciones_dadas
-        dias_para_completar = (frac_originales_que_faltaban / 5.0) * 7.0
-        T_new = T_pregap + dias_retraso_biologico + dias_para_completar
 
 
         # ── BED tumoral — Ecuación B del Appendix B ──────────────
@@ -237,14 +245,12 @@ with col_results:
         # BED10 del plan completo prescrito
         BED10_prescrito = bed_tumour(total_fracciones, dosis_por_fraccion, alfa_beta, factor_k, T_original, t_delay)
 
-        # BED10 ya entregado antes del gap
-        BED10_pregap = bed_tumour(fracciones_dadas, dosis_por_fraccion, alfa_beta, factor_k, T_pregap, t_delay)
-
-        # Despejando BED físico post-gap necesario
-        repop_total = factor_k * max(0.0, T_new - t_delay)
-        repop_pregap = factor_k * max(0.0, T_pregap - t_delay)
-        bed_fisico_postgap_needed = BED10_prescrito - (fracciones_dadas * dosis_por_fraccion * (
-                    1 + dosis_por_fraccion / alfa_beta)) + repop_total - repop_pregap
+        # Despejando BED físico post-gap necesario (Eq. B Appendix B)
+        bed_fisico_postgap_needed = (
+                BED10_prescrito
+                + factor_k * max(0.0, T_total - t_delay)
+                - fracciones_dadas * dosis_por_fraccion * (1 + dosis_por_fraccion / alfa_beta)
+        )
         bed_fisico_postgap_needed = max(0.0, bed_fisico_postgap_needed)
 
         # Fracciones necesarias manteniendo misma dosis por fracción
@@ -254,9 +260,17 @@ with col_results:
         fracciones_extra = n_restante_final - frac_originales_que_faltaban
 
         # Diferencia de BED por redondeo
-        BED10_final = BED10_pregap + bed_tumour(n_restante_final, dosis_por_fraccion, alfa_beta, factor_k, T_new,
-                                                t_delay) + repop_pregap
+        bed_fisico_total = (
+                fracciones_dadas * dosis_por_fraccion * (1 + dosis_por_fraccion / alfa_beta)
+                + n_restante_final * dosis_por_fraccion * (1 + dosis_por_fraccion / alfa_beta)
+        )
+        BED10_final = bed_fisico_total - factor_k * max(0.0, T_total - t_delay)
         diff_bed = BED10_final - BED10_prescrito
+
+        # Variables exclusivas para mostrar en el reporte de auditoría
+        T_pregap_reporte = T_calendario(fracciones_dadas)
+        BED10_pregap_reporte = bed_tumour(fracciones_dadas, dosis_por_fraccion, alfa_beta, factor_k, T_pregap_reporte,
+                                          t_delay)
 
         # --- MAJOR 1: NORMAL TISSUE BED3 CALCULATION ---
         bed3_frac = dosis_por_fraccion * (1 + dosis_por_fraccion / AB_NORMAL)
@@ -325,7 +339,7 @@ with col_results:
                 if n_restante_final > 0:
                     a = n_restante_final / alfa_beta
                     b = n_restante_final
-                    c = -bed_fisico_postgap_needed  # Corrected reference for exact physical BED needed
+                    c = -bed_fisico_postgap_needed
                     discriminant = (b ** 2) - (4 * a * c)
 
                     if discriminant >= 0:
@@ -415,7 +429,7 @@ Calendar gap        : {dias_naturales} days
 Fractions delivered : {fracciones_dadas} / {total_fracciones}
 Turns lost          : {turnos_perdidos}
 OTT extension       : {dias_retraso_biologico} days
-Pre-gap BED₁₀       : {BED10_pregap:.2f} Gy₁₀
+Pre-gap BED₁₀       : {BED10_pregap_reporte:.2f} Gy₁₀
 Pre-gap BED₃        : {bed3_delivered:.2f} Gy₃
 Remaining BED₃      : {bed3_remaining:.2f} Gy₃
 
