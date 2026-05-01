@@ -33,7 +33,7 @@ st.info("Biological compensation calculator based on RCR 4th Edition guidelines 
 st.sidebar.header("🧮 Radiobiological Settings")
 
 with st.sidebar:
-    st.subheader("Clinical Protocol (Smart Presets)")
+    st.subheader("Clinical Protocol (Suggested Presets)")
 
     # 1. Base de datos ampliada de "Preajustes Inteligentes"
     protocol_presets = {
@@ -79,16 +79,10 @@ with st.sidebar:
     cat_labels = {1: "Category 1 (Fast)", 2: "Category 2 (Standard)", 3: "Category 3 (Palliative)"}
     rcr_category_num = preset['cat']
 
-    # 3. Transparencia Clínica: Mostrar los parámetros asumidos en un cuadro informativo
-    st.info(f"""
-    **{cat_labels[preset['cat']]}**
-    - **Tumour α/β:** {preset['ab']} Gy
-    - **Loss (K):** {preset['k']} Gy/day
-    - **T_delay:** {preset['tdelay']} days
-    """)
+
 
     # 4. DIVULGACIÓN PROGRESIVA: Ocultar los parámetros complejos editables
-    with st.expander("⚙️ Advanced Radiobiology Parameters"):
+    with st.expander("⚙️ Modify selected Radiobiology Parameters"):
         st.caption("Override default RCR values if clinically justified.")
 
         rcr_category_num = st.number_input("RCR Category", min_value=1, max_value=3, value=preset['cat'])
@@ -99,6 +93,15 @@ with st.sidebar:
         st.divider()
         st.caption("Normal Tissue (OARs)")
         AB_NORMAL = st.number_input("Normal Tissue α/β (Gy)", min_value=1.0, value=3.0, step=0.5)
+
+    # 3. Transparencia Clínica: Mostrar los parámetros asumidos en un cuadro informativo
+    st.info(f"""
+        **{cat_labels[rcr_category_num]}**
+        - **Tumour α/β:** {alfa_beta} Gy
+        - **Loss (K):** {factor_k} Gy/day
+        - **T_delay:** {t_delay} days
+        - **OARs α/β:** {AB_NORMAL} Gy
+        """)
 
     st.divider()
     st.caption("Global LQ Model Configuration.")
@@ -397,6 +400,31 @@ with col_results:
                         f"🚫 **NORMAL TISSUE TOLERANCE WARNING:** Exceeds remaining BED₃ by **{excess_pct_tab3:.1f}%**. Review with clinical team.")
                 elif excess_pct_tab3 > 0:
                     st.warning(f"⚠️ Normal tissue BED₃ slightly exceeded by **{excess_pct_tab3:.1f}%**.")
+        # =========================================================
+        # --- PANEL DE DEPURACIÓN Y VERIFICACIÓN (QA) -------------
+        # =========================================================
+        with st.expander("🛠️ Internal Calculation Verification Panel (QA)"):
+            st.markdown(f"""
+            *Exact values calculated by the radiobiological engine for validation:*
+
+            **⏳ Times & Constants**
+            * **K Factor:** `{factor_k}` Gy/day
+            * **T_delay:** `{t_delay}` days
+            * **OTT Extension:** `{dias_retraso_biologico}` days
+            * **T_original (Plan):** `{T_original}` days
+            * **T_total (Real):** `{T_total}` days
+
+            **🎯 BED₁₀ (Tumor)**
+            * **Prescribed Target:** `{BED10_prescrito:.3f}` Gy₁₀
+            * **Delivered (Pre-gap):** `{BED10_pregap_reporte:.3f}` Gy₁₀
+            * **Physical to Compensate:** `{bed_fisico_postgap_needed:.3f}` Gy₁₀
+            * **Final Achieved:** `{BED10_final:.3f}` Gy₁₀
+
+            **🛡️ BED₃ (Normal Tissue)**
+            * **Prescribed Limit:** `{bed3_prescribed:.3f}` Gy₃
+            * **Already Consumed:** `{bed3_delivered:.3f}` Gy₃
+            * **Remaining Available:** `{bed3_remaining:.3f}` Gy₃
+            """)
 
         # =========================================================
         # --- MINOR 2: EXPORTABLE AUDIT REPORT (UPDATED) ----------
@@ -502,7 +530,7 @@ Are you interested in new features or have suggestions for future developments?
 I am open to collaborations and professional opportunities in Medical Physics and Software Development.
 
 - **LinkedIn:** [Luis Fernando Paredes ](https://www.linkedin.com/in/lfparedes1/)
-- **GitHub:** [Project Repository](https://github.com/LuisParedesOcampo/RadComp.git)
+- **GitHub:** [Project Repository](https://github.com/LuisParedesOcampo/RadResume.git)
 - **Email:** luisfernandoparedes2@gmail.com
 
 *Developed by a Clinical Medical Physicist*
