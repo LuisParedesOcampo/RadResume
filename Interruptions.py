@@ -24,8 +24,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🧬 RadResume: Radiotherapy Interruptions dose compensation")
-st.info("Calculates the dose compensation required when a radiotherapy course is interrupted by machine breakdown, patient illness or any unplanned event, based on RCR 4th Edition guidelines (2019).")
+st.title("🧬 RadResume: Radiotherapy Interruptions & dose compensation")
+st.info("Calculates the dose compensation required when a radiotherapy course is interrupted by machine breakdown, patient illness or any unplanned event, based on RCR guidelines for the management of unscheduled treatment interruptions, Fourth edition(2019).")
 
 # =============================================================
 # 2. SIDEBAR: RADIOBIOLOGY (System Configuration)
