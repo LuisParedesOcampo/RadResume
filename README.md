@@ -13,7 +13,7 @@ Unscheduled interruptions in radical radiotherapy allow tumour cells to repopula
 ## 🌟 Key Features
 
 *   **Strict RCR Compliance:** Uses the exact mathematical formulations from RCR Appendix B (Equation B), properly handling Overall Treatment Time (OTT) extensions, $T_{delay}$, and tumor repopulation ($K$ factors).
-*   **Smart Clinical Presets:** Includes a comprehensive database of predefined radiobiological parameters (Category, $\alpha/\beta$, $K$, $T_{delay}$) for common treatment sites (e.g., Head & Neck, Prostate, Gastrointestinal, Palliative).
+*   **Suggested Clinical Presets:** Includes a comprehensive database of predefined radiobiological parameters (Category, $\alpha/\beta$, $K$, $T_{delay}$) for common treatment sites (e.g., Head & Neck, Prostate, Gastrointestinal, Palliative).
 *   **Hierarchical Action Plans:** Suggests compensations following the clinical priority established by the RCR:
     1.  Linac Transfer / Weekend Treatments.
     2.  BID (Twice-a-day) Scheduling.
