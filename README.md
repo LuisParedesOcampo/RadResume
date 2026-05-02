@@ -3,7 +3,9 @@
 
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![Medical Physics](https://img.shields.io/badge/Medical_Physics-Clinical_Tool-01579b?style=for-the-badge)
+<!--![Medical Physics](https://img.shields.io/badge/Medical_Physics-Clinical_Tool-01579b?style=for-the-badge) -->
+
+
 
 **RadResume** is a clinical-grade Streamlit application designed for Medical Physicists and Radiation Oncologists. It calculates biological compensation for radiotherapy interruptions based strictly on the **Royal College of Radiologists (RCR) "The timely delivery of radical radiotherapy: guidelines for the management of unscheduled treatment interruptions Fourth edition" (2019)**.
 [https://www.rcr.ac.uk/our-services/all-our-publications/clinical-oncology-publications/timely-delivery-of-radical-radiotherapy-guidelines-for-the-management-of-unscheduled-treatment-interruptions-fourth-edition/]
