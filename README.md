@@ -1,17 +1,19 @@
-# 🧬 RadResume: RCR Interruption Calculator
+# 🧬 RadResume: RCR Radiotherapy Interruption and dose compensation Calculator
 
 ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge&logo=Streamlit&logoColor=white)
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Medical Physics](https://img.shields.io/badge/Medical_Physics-Clinical_Tool-01579b?style=for-the-badge)
 
-**RadResume** is a clinical-grade Streamlit application designed for Medical Physicists and Radiation Oncologists. It calculates biological compensation for radiotherapy interruptions based strictly on the **Royal College of Radiologists (RCR) 4th Edition guidelines (2019)**.
+**RadResume** is a clinical-grade Streamlit application designed for Medical Physicists and Radiation Oncologists. It calculates biological compensation for radiotherapy interruptions based strictly on the **Royal College of Radiologists (RCR) "The timely delivery of radical radiotherapy: guidelines for the management of unscheduled treatment interruptions Fourth edition" (2019)**.
+
+[https://www.rcr.ac.uk/our-services/all-our-publications/clinical-oncology-publications/timely-delivery-of-radical-radiotherapy-guidelines-for-the-management-of-unscheduled-treatment-interruptions-fourth-edition/]
 
 Unscheduled interruptions in radical radiotherapy allow tumour cells to repopulate, increasing the risk of local recurrence. RadResume helps clinical teams calculate the compensation needed — additional fractions, adjusted dose, or accelerated scheduling — to recover the prescribed biological dose when treatment is delayed. Based on the RCR 4th Edition guidelines (2019)."
 
 ## 🌟 Key Features
 
 *   **Strict RCR Compliance:** Uses the exact mathematical formulations from RCR Appendix B (Equation B), properly handling Overall Treatment Time (OTT) extensions, $T_{delay}$, and tumor repopulation ($K$ factors).
-*   **Smart Clinical Presets:** Includes a comprehensive database of predefined radiobiological parameters (Category, $\alpha/\beta$, $K$, $T_{delay}$) for common treatment sites (e.g., Head & Neck, Prostate, Gastrointestinal, Palliative).
+*   **Suggested Clinical Presets:** Includes a comprehensive database of predefined radiobiological parameters (Category, $\alpha/\beta$, $K$, $T_{delay}$) for common treatment sites (e.g., Head & Neck, Prostate, Gastrointestinal, Palliative).
 *   **Hierarchical Action Plans:** Suggests compensations following the clinical priority established by the RCR:
     1.  Linac Transfer / Weekend Treatments.
     2.  BID (Twice-a-day) Scheduling.
@@ -57,12 +59,10 @@ To run RadResume locally, you need Python installed on your system. Follow these
 Notice: This software is intended for educational and research purposes only. It is not a medical device and has not been cleared by any regulatory body (e.g., FDA, CE, MHRA) for clinical use.
 
 * **Responsibility:** The user assumes all responsibility for the interpretation and clinical application of the results provided by this tool.
-
 * **Verification:** Calculations must be independently verified by a certified Medical Physicist or Radiation Oncologist before making any clinical decisions.
-
 * **Liability:** The developers of RadResume shall not be held liable for any damages, clinical errors, or consequences arising from the use or misuse of this software.
-
 * **Compliance:** Any change to fractionation or dose schedules must be authorized and justified by the prescribing practitioner, in accordance with local regulations (e.g., IR(ME)R 2017 in the UK).
 
-LinkedIn: Luis Fernando Paredes https://www.linkedin.com/in/lfparedes1/
-Email: luisfernandoparedes2@gmail.com
+**LinkedIn:** Luis Fernando Paredes, [https://www.linkedin.com/in/lfparedes1/].
+
+Clinical Medical Physicist
