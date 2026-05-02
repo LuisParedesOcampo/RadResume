@@ -59,12 +59,10 @@ To run RadResume locally, you need Python installed on your system. Follow these
 Notice: This software is intended for educational and research purposes only. It is not a medical device and has not been cleared by any regulatory body (e.g., FDA, CE, MHRA) for clinical use.
 
 * **Responsibility:** The user assumes all responsibility for the interpretation and clinical application of the results provided by this tool.
-
 * **Verification:** Calculations must be independently verified by a certified Medical Physicist or Radiation Oncologist before making any clinical decisions.
-
 * **Liability:** The developers of RadResume shall not be held liable for any damages, clinical errors, or consequences arising from the use or misuse of this software.
-
 * **Compliance:** Any change to fractionation or dose schedules must be authorized and justified by the prescribing practitioner, in accordance with local regulations (e.g., IR(ME)R 2017 in the UK).
 
-LinkedIn: Luis Fernando Paredes https://www.linkedin.com/in/lfparedes1/
-Email: luisfernandoparedes2@gmail.com
+**LinkedIn:** Luis Fernando Paredes, [https://www.linkedin.com/in/lfparedes1/].
+
+Clinical Medical Physicist
