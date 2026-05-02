@@ -515,7 +515,7 @@ st.markdown("""
         <li><strong>Responsibility:</strong> The user assumes all responsibility for the interpretation and clinical application of the results provided by this tool.</li>
         <li><strong>Verification:</strong> Calculations must be independently verified by a certified Medical Physicist or Radiation Oncologist before any clinical decision.</li>
         <li><strong>Schedule:</strong> Any change to fractionation or dose schedule must be authorised and justified by the prescribing practitioner, in accordance with IR(ME)R 2017 (RCR Section 7.2). </li>
-        <li><strong>Liability:</strong> The developers of RadComp shall not be held liable for any damages, clinical errors, or consequences arising from the use or misuse of this software.</li>
+        <li><strong>Liability:</strong> The developers of RadResume shall not be held liable for any damages, clinical errors, or consequences arising from the use or misuse of this software.</li>
     </ul>
     <p style="color: #6c757d; font-size: 0.85em; font-style: italic;">
         By using this application, you acknowledge and agree to these terms.
