@@ -5,9 +5,9 @@
 ![Python](https://img.shields.io/badge/Python-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![Medical Physics](https://img.shields.io/badge/Medical_Physics-Clinical_Tool-01579b?style=for-the-badge)
 
-🚀 **Live App Access [https://radresume.streamlit.app/]**
-
 **RadResume** is a clinical-grade Streamlit application designed for Medical Physicists and Radiation Oncologists. It calculates biological compensation for radiotherapy interruptions based strictly on the **Royal College of Radiologists (RCR) "The timely delivery of radical radiotherapy: guidelines for the management of unscheduled treatment interruptions Fourth edition" (2019)**.
+
+🚀 **Live App Access [https://radresume.streamlit.app/]**
 
 [https://www.rcr.ac.uk/our-services/all-our-publications/clinical-oncology-publications/timely-delivery-of-radical-radiotherapy-guidelines-for-the-management-of-unscheduled-treatment-interruptions-fourth-edition/]
 
