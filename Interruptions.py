@@ -4,7 +4,7 @@ from datetime import date, timedelta
 
 # 1. Page Configuration (RadResume Identity)
 st.set_page_config(
-    page_title="RadResume | RCR Interruption Calculator",
+    page_title="RadResume | RCR Radiotherapy Interruption Calculator",
     page_icon="🧬",
     layout="wide"
 )
@@ -24,8 +24,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🧬 RadResume: Interruption Module")
-st.info("Biological compensation calculator based on RCR 4th Edition guidelines (2019).")
+st.title("🧬 RadResume: Radiotherapy Interruptions dose compensation")
+st.info("Calculates the dose compensation required when a radiotherapy course is interrupted by machine breakdown, patient illness or any unplanned event, based on RCR 4th Edition guidelines (2019).")
 
 # =============================================================
 # 2. SIDEBAR: RADIOBIOLOGY (System Configuration)

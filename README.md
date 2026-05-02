@@ -6,6 +6,8 @@
 
 **RadResume** is a clinical-grade Streamlit application designed for Medical Physicists and Radiation Oncologists. It calculates biological compensation for radiotherapy interruptions based strictly on the **Royal College of Radiologists (RCR) 4th Edition guidelines (2019)**.
 
+Unscheduled interruptions in radical radiotherapy allow tumour cells to repopulate, increasing the risk of local recurrence. RadResume helps clinical teams calculate the compensation needed — additional fractions, adjusted dose, or accelerated scheduling — to recover the prescribed biological dose when treatment is delayed. Based on the RCR 4th Edition guidelines (2019)."
+
 ## 🌟 Key Features
 
 *   **Strict RCR Compliance:** Uses the exact mathematical formulations from RCR Appendix B (Equation B), properly handling Overall Treatment Time (OTT) extensions, $T_{delay}$, and tumor repopulation ($K$ factors).
